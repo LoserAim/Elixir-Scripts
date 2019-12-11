@@ -26,7 +26,6 @@ defmodule Looper do
         System.halt(0)
       x ->
         input = IO.gets("") |> String.trim
-        
         args = String.split(input, " ", trim: true)
         Command.main(args)
         for arg <- args do

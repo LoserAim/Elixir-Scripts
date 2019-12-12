@@ -21,8 +21,8 @@ defmodule KeyValueTest do
     File.rm("testfile")
   end
 
-  test "KeyValue.parse_line determines if there are two args in given list" do
-    assert KeyValue.parse_line(["testarg1", "testarg2"], 2) == true
+  test "KeyValue.is_line_valid? determines if there are two args in given list" do
+    assert KeyValue.is_line_valid?(["testarg1", "testarg2"], 2) == true
   end
 
   test "KeyValue.put_value passes without failing" do

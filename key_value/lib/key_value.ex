@@ -17,6 +17,16 @@ defmodule KeyValue do
   """
   def start(args) do
     case List.first(args) do
+      "push" ->
+        if KeyValue.is_line_valid?(args, 3),
+          do: KeyValue.push(args),
+          else: IO.puts("Invalid syntax")
+        KeyValue.CLI.main("")
+      "pop" ->
+        if KeyValue.is_line_valid?(args, 2),
+          do: KeyValue.pop(args),
+          else: IO.puts("Invalid syntax")
+        KeyValue.CLI.main("")
       "fetch" -> 
         if KeyValue.is_line_valid?(args, 2), 
           do: KeyValue.fetch_value(args), 
@@ -34,6 +44,46 @@ defmodule KeyValue do
         KeyValue.CLI.main("")
     end
   end
+
+
+  def push(args) do
+    key = Enum.at(args, 1)
+      |> String.to_atom
+    value = Enum.at(args, 2)
+    insert_map = Map.new()
+      |> Map.put(key, [value])
+    list = KeyValue.load("key-valueList")
+    if list == "File does not exist!" do
+      []
+        |> List.insert_at(0, insert_map)
+        |> KeyValue.save("key-valueList")
+    else
+      {_, list_value} = List.keyfind(list, key, 0)
+      List.insert_at(list_value, 0, value)
+        |> List.insert_at(%{Enum.at(args,1): list_value}, 0)
+        |> KeyValue.save("key-valueList")
+    end
+    IO.puts("ok")
+  end
+
+  def pop(args) do
+    key = Enum.at(args, 1)
+      |> String.to_atom
+    list = KeyValue.load("key-valueList")
+    IO.inspect(list)
+    if list == "File does not exist!" do
+      IO.puts("value not found")
+      "value not found"
+    else
+      {_, list_value} = List.keyfind(list, key, 0)
+      List.pop_at(list_value, 0)
+        |> IO.puts
+        |> KeyValue.save("key-valueList")
+    end
+  end
+
+    
+    
 
 
   @doc """

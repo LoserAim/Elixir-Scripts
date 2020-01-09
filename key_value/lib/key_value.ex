@@ -46,48 +46,74 @@ defmodule KeyValue do
   end
 
 
-  def find_match(collection, dictkey) do
-    key = dictkey
+  @doc """
+    Purpose:
+      This function will find a matching key in a list of maps
+    Returns:
+      map
+  """
+  def find_match(collection, key) do
     Enum.find(collection, fn(element) ->
       match?(%{^key => _}, element)
     end)
+      |> case do
+        nil -> 
+          {:error, "no match"}
+        match ->
+          {:ok, match}
+        end
   end
 
-  def find_index(collection, dictkey) do
-    key = dictkey
+  @doc """
+    Purpose:
+      This function will find the index of a matching key in 
+      a list of maps
+    Returns:
+      int
+  """
+  def find_index(collection, key) do
     Enum.find_index(collection, fn(element) ->
       match?(%{^key => _}, element)
     end)
   end
 
+  def replace_and_save(map, list, index) do
+    List.replace_at(list, index, map)
+      |> KeyValue.save("key-valueList")
+  end
+
+  @doc """
+    Purpose:
+      This function will fetch the result
+    Returns:
+      int
+  """
   def fetch_and_replace(collection, list, key, value) do
     Map.fetch(collection, key)
       |> case do
         {:ok, res} ->
-          new_map = Map.new()
+          Map.new()
             |> Map.put(key, value)
             |> Map.put(key, List.insert_at(res, 0, value))
-          List.replace_at(list, KeyValue.find_index(list, key), new_map)
-            |> KeyValue.save("key-valueList")
+            |> KeyValue.replace_and_save(list, KeyValue.find_index(list, key))
         :error ->
           List.insert_at(list, 0, %{key => value})
             |> KeyValue.save("key-valueList")
       end
   end
 
-
   def fetch_and_pop(collection, list, key) do
     Map.fetch(collection, key)
       |> case do
         {:ok, res} ->
-          {popped_value, popped_list} = List.pop_at(res, 0)
-          if popped_value != nil do
-            List.replace_at(list, KeyValue.find_index(list, key), %{key => popped_list})
-              |> KeyValue.save("key-valueList")
-            IO.puts(popped_value)
-          else
-            IO.puts("value not found")
-          end
+          List.pop_at(res, 0)
+            |> case do
+              {nil, _} ->
+                IO.puts("value not found")
+              {popped_value, popped_list} ->
+                KeyValue.replace_and_save(%{key => popped_list}, list, KeyValue.find_index(list, key))
+                IO.puts(popped_value)
+            end
         :error ->
           IO.puts("value not found")
       end
@@ -98,17 +124,22 @@ defmodule KeyValue do
     key = Enum.at(args, 1)
       |> String.to_atom
     value = Enum.at(args, 2)
-    list = KeyValue.load("key-valueList")
-    if list == "File does not exist!" do
-      []
-        |> List.insert_at(0, %{key => [value]})
-        |> KeyValue.save("key-valueList")
-    else
-      exists = KeyValue.find_match(list, key)
-      if exists != nil,
-        do: KeyValue.fetch_and_replace(exists, list, key, value),
-        else: List.insert_at(list, 0, %{key => [value]}) |> KeyValue.save("key-valueList")
-    end
+    KeyValue.load("key-valueList")
+      |> case do
+        "File does not exist!" ->
+          []
+            |> List.insert_at(0, %{key => [value]})
+            |> KeyValue.save("key-valueList")
+        list ->
+          KeyValue.find_match(list, key)
+            |> case do
+              {:ok, match} ->
+                KeyValue.fetch_and_replace(match, list, key,value)
+              {:error, _result} ->
+                List.insert_at(list, 0, %{key => [value]})
+                  |> KeyValue.save("key-valueList")
+            end
+      end
     IO.puts("ok")
   end
 
@@ -116,20 +147,21 @@ defmodule KeyValue do
   def pop(args) do
     key = Enum.at(args, 1)
       |> String.to_atom
-    list = KeyValue.load("key-valueList")
-    if list == "File does not exist!" do
-      IO.puts("value not found")
-      "value not found"
-    else
-      exists = KeyValue.find_match(list, key)
-      if exists != nil,
-        do: KeyValue.fetch_and_pop(exists, list, key),
-        else: IO.puts("value not found")
+    KeyValue.load("key-valueList")
+    |> case do
+      "File does not exist!" ->
+        IO.puts("value not found")
+        "value not found"
+      list ->
+        KeyValue.find_match(list, key)
+          |> case do
+            {:ok, match} ->
+              KeyValue.fetch_and_pop(match, list, key)
+            {:error, _result} ->
+              IO.puts("value not found")
+          end
     end
   end
-
-    
-    
 
 
   @doc """

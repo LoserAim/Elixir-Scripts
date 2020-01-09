@@ -46,39 +46,85 @@ defmodule KeyValue do
   end
 
 
+  def find_match(collection, dictkey) do
+    key = dictkey
+    Enum.find(collection, fn(element) ->
+      match?(%{^key => _}, element)
+    end)
+  end
+
+  def find_index(collection, dictkey) do
+    key = dictkey
+    Enum.find_index(collection, fn(element) ->
+      match?(%{^key => _}, element)
+    end)
+  end
+
+  def fetch_and_replace(collection, list, key, value) do
+    Map.fetch(collection, key)
+      |> case do
+        {:ok, res} ->
+          new_map = Map.new()
+            |> Map.put(key, value)
+            |> Map.put(key, List.insert_at(res, 0, value))
+          List.replace_at(list, KeyValue.find_index(list, key), new_map)
+            |> KeyValue.save("key-valueList")
+        :error ->
+          List.insert_at(list, 0, %{key => value})
+            |> KeyValue.save("key-valueList")
+      end
+  end
+
+
+  def fetch_and_pop(collection, list, key) do
+    Map.fetch(collection, key)
+      |> case do
+        {:ok, res} ->
+          {popped_value, popped_list} = List.pop_at(res, 0)
+          if popped_value != nil do
+            List.replace_at(list, KeyValue.find_index(list, key), %{key => popped_list})
+              |> KeyValue.save("key-valueList")
+            IO.puts(popped_value)
+          else
+            IO.puts("value not found")
+          end
+        :error ->
+          IO.puts("value not found")
+      end
+  end
+
+
   def push(args) do
     key = Enum.at(args, 1)
       |> String.to_atom
     value = Enum.at(args, 2)
-    insert_map = Map.new()
-      |> Map.put(key, [value])
     list = KeyValue.load("key-valueList")
     if list == "File does not exist!" do
       []
-        |> List.insert_at(0, insert_map)
+        |> List.insert_at(0, %{key => [value]})
         |> KeyValue.save("key-valueList")
     else
-      {_, list_value} = List.keyfind(list, key, 0)
-      List.insert_at(list_value, 0, value)
-        |> List.insert_at(%{Enum.at(args,1): list_value}, 0)
-        |> KeyValue.save("key-valueList")
+      exists = KeyValue.find_match(list, key)
+      if exists != nil,
+        do: KeyValue.fetch_and_replace(exists, list, key, value),
+        else: List.insert_at(list, 0, %{key => [value]}) |> KeyValue.save("key-valueList")
     end
     IO.puts("ok")
   end
+
 
   def pop(args) do
     key = Enum.at(args, 1)
       |> String.to_atom
     list = KeyValue.load("key-valueList")
-    IO.inspect(list)
     if list == "File does not exist!" do
       IO.puts("value not found")
       "value not found"
     else
-      {_, list_value} = List.keyfind(list, key, 0)
-      List.pop_at(list_value, 0)
-        |> IO.puts
-        |> KeyValue.save("key-valueList")
+      exists = KeyValue.find_match(list, key)
+      if exists != nil,
+        do: KeyValue.fetch_and_pop(exists, list, key),
+        else: IO.puts("value not found")
     end
   end
 
@@ -187,6 +233,9 @@ defmodule KeyValue do
     IO.puts("Bye!")
     if File.exists?("key-valueData") do
       File.rm("key-valueData")
+    end
+    if File.exists?("key-valueList") do
+      File.rm("key-valueList")
     end
     :ok
   end

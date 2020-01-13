@@ -40,7 +40,7 @@ defmodule KeyValue do
       "exit" -> 
         KeyValue.close_script
       _ -> 
-        IO.puts("Unknown command. Known commands are: put, fetch, exit")
+        IO.puts("Unknown command. Known commands are: push, pop, put, fetch, exit")
         KeyValue.CLI.main("")
     end
   end
@@ -69,6 +69,7 @@ defmodule KeyValue do
       end
     IO.puts("ok")
   end
+  
 
   def pop_and_replace(tuple, list, key) do
     Tuple.to_list(tuple)
